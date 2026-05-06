@@ -9,6 +9,7 @@ import os
 from crewai import Agent, Task, Crew, Process, LLM
 from crewai.tools import tool
 from ddgs import DDGS
+from tavily import TavilyClient
 
 # ==========================================
 # 1. LLM & TOOL CONFIGURATION
@@ -16,6 +17,10 @@ from ddgs import DDGS
 # ⚠️ WARNING: Never hardcode your actual API key in a public repository!
 MY_API_KEY = "" # Add your Google Gemini API Key here
 os.environ["GEMINI_API_KEY"] = MY_API_KEY
+
+# Optional: Set TAVILY_API_KEY to use Tavily search instead of DuckDuckGo.
+# When TAVILY_API_KEY is present, Tavily is used; otherwise DuckDuckGo is the default.
+# os.environ["TAVILY_API_KEY"] = ""  # Add your Tavily API key here (optional)
 
 advanced_llm = LLM(
     model="gemini/gemini-2.5-flash",
@@ -26,7 +31,13 @@ advanced_llm = LLM(
 def search_engine(query: str) -> str:
     """Searches the internet for the latest and most accurate information."""
     try:
-        results = list(DDGS().text(query, max_results=4))
+        tavily_api_key = os.environ.get("TAVILY_API_KEY")
+        if tavily_api_key:
+            client = TavilyClient(api_key=tavily_api_key)
+            response = client.search(query=query, max_results=4)
+            results = response.get("results", [])
+        else:
+            results = list(DDGS().text(query, max_results=4))
         if not results:
             return "Empty results. Try using a broader or different search query."
         return str(results)
@@ -102,6 +113,7 @@ print(final_result)
 # This block automatically generates a clean requirements.txt file for easy installation.
 requirements_content = """crewai
 ddgs
+tavily-python
 """
 
 with open('requirements.txt', 'w') as f:

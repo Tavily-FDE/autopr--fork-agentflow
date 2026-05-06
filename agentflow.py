@@ -3,13 +3,12 @@
 # ==============================================================================
 
 # Uncomment the line below if running directly in Google Colab
-# !pip install -U ddgs crewai
+# !pip install -U ddgs crewai tavily-python
 
 import os
 from crewai import Agent, Task, Crew, Process, LLM
 from crewai.tools import tool
 from ddgs import DDGS
-from tavily import TavilyClient
 
 # ==========================================
 # 1. LLM & TOOL CONFIGURATION
@@ -22,6 +21,13 @@ os.environ["GEMINI_API_KEY"] = MY_API_KEY
 # When TAVILY_API_KEY is present, Tavily is used; otherwise DuckDuckGo is the default.
 # os.environ["TAVILY_API_KEY"] = ""  # Add your Tavily API key here (optional)
 
+# Initialize Tavily client once at module level if the key is available.
+_tavily_client = None
+_tavily_api_key = os.environ.get("TAVILY_API_KEY")
+if _tavily_api_key:
+    from tavily import TavilyClient
+    _tavily_client = TavilyClient(api_key=_tavily_api_key)
+
 advanced_llm = LLM(
     model="gemini/gemini-2.5-flash",
     api_key=MY_API_KEY
@@ -31,10 +37,8 @@ advanced_llm = LLM(
 def search_engine(query: str) -> str:
     """Searches the internet for the latest and most accurate information."""
     try:
-        tavily_api_key = os.environ.get("TAVILY_API_KEY")
-        if tavily_api_key:
-            client = TavilyClient(api_key=tavily_api_key)
-            response = client.search(query=query, max_results=4)
+        if _tavily_client:
+            response = _tavily_client.search(query=query, max_results=4)
             results = response.get("results", [])
         else:
             results = list(DDGS().text(query, max_results=4))
